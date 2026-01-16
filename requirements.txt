@@ -1,0 +1,42 @@
+# ============================================
+# RAG Robustness Project - Phase 1 Dependencies
+# ============================================
+# Install: pip install -r requirements.txt
+# Then: python -m spacy download en_core_web_sm
+# ============================================
+
+# Core ML/DL
+torch>=2.0.0
+transformers>=4.40.0
+accelerate>=0.29.0
+bitsandbytes>=0.43.0
+
+# RAG Components
+langchain>=0.1.16
+langchain-community>=0.0.34
+chromadb>=0.4.24
+sentence-transformers>=2.6.1
+
+# Data & Datasets
+datasets>=2.18.0
+pandas>=2.0.0
+
+# NLP
+spacy>=3.7.0
+
+# Environment
+python-dotenv>=1.0.1
+
+# Visualization & Analysis
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Evaluation (for later)
+# ragas>=0.1.0
+
+# Progress bars
+tqdm>=4.65.0
+
+# Jupyter (optional, for exploration)
+ipykernel>=6.0.0
+

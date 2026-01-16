@@ -1,0 +1,39 @@
+# Environment variables
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Data and caches
+**/chroma_db/     # Auto-generated vector store (rebuilds on notebook run)
+**/raw/           # Unused raw data folder
+*.sqlite3         # ChromaDB database files
+
+# Keep these committed for reproducibility:
+# - phase1/data/processed/  (pre-generated poisoned benchmarks)
+# - phase1/results/         (experimental results)
+
+# Results (optional - commit after experiments if needed)
+# results/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

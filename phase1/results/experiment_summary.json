@@ -1,0 +1,54 @@
+{
+  "experiment": "Phase 1 Baseline",
+  "date": "2026-01-16T11:52:33.086112",
+  "model": "meta-llama/Meta-Llama-3-8B-Instruct",
+  "samples": 200,
+  "v1": {
+    "top_k": 2,
+    "max_context": 4000,
+    "metrics": {
+      "clean": {
+        "count": 200,
+        "exact_match": 0.345,
+        "f1_score": 0.4492403903567697,
+        "contains_answer": 0.37,
+        "refusal_rate": 0.06,
+        "hallucination_rate": 0.0,
+        "attack_success_rate": 0.0
+      },
+      "poisoned": {
+        "count": 200,
+        "exact_match": 0.075,
+        "f1_score": 0.13127112759338927,
+        "contains_answer": 0.08,
+        "refusal_rate": 0.12,
+        "hallucination_rate": 0.25,
+        "attack_success_rate": 0.25
+      }
+    }
+  },
+  "v2": {
+    "top_k": 3,
+    "max_context": 6000,
+    "metrics": {
+      "clean": {
+        "count": 200,
+        "exact_match": 0.385,
+        "f1_score": 0.5002198275862069,
+        "contains_answer": 0.425,
+        "refusal_rate": 0.045,
+        "hallucination_rate": 0.0,
+        "attack_success_rate": 0.0
+      },
+      "poisoned": {
+        "count": 200,
+        "exact_match": 0.07,
+        "f1_score": 0.13407580330982968,
+        "contains_answer": 0.075,
+        "refusal_rate": 0.105,
+        "hallucination_rate": 0.28,
+        "attack_success_rate": 0.28
+      }
+    }
+  }
+}
