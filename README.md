@@ -1,122 +1,142 @@
 # In RAG We Trust? Measuring Vulnerability to Document Poisoning
 
-**Project:** In RAG We Trust? Measuring Vulnerability to Document Poisoning  
-**Author:** Talha Köse   
-**Professor:** Alfio Ferrara   
-**Course:** NLP 2025-26 | Università degli Studi di Milano
+Project: In RAG We Trust? Measuring Vulnerability to Document Poisoning  
+Author: Talha Kose  
+Professor: Alfio Ferrara  
+Course: NLP 2025-26 | Universita degli Studi di Milano
 
 ---
 
-## 🎯 Problem
+## Overview
 
-Retrieval-Augmented Generation (RAG) systems power modern AI applications (ChatGPT with browsing, Microsoft Copilot, Perplexity AI), but they operate under a critical assumption: **retrieved documents are trustworthy**. This project asks: *What happens when adversaries inject false information into the knowledge base?*
+This project measures how vulnerable a RAG pipeline is to semantic document poisoning.
 
-## 🔬 What We Found
+Core idea:
+1. Build a clean benchmark from HotpotQA contexts.
+2. Build a poisoned benchmark by replacing true entities with plausible distractors.
+3. Run the same questions in clean and poisoned conditions.
+4. Compare quality and attack metrics.
 
-RAG systems are **severely vulnerable** to document poisoning attacks:
+Main finding:
+Increasing retrieval depth and context size did not improve robustness in this setup.
+
+---
+
+## Results Snapshot
 
 | Metric | V1 Clean | V1 Poisoned | V2 Clean | V2 Poisoned |
 |--------|----------|-------------|----------|-------------|
-| **Exact Match** | 34.5% | 7.5% | 38.5% | 7.0% |
-| **Attack Success Rate** | 0% | 25.0% | 0% | 28.0% |
-| **EM Drop (Relative)** | — | **-78%** | — | **-82%** |
+| Exact Match | 34.5% | 7.5% | 38.5% | 7.0% |
+| Attack Success Rate | 0% | 25.0% | 0% | 28.0% |
+| Relative EM Drop | - | -78% | - | -82% |
 
-**Counterintuitive Finding:** Improving retrieval (more documents, larger context) *increases* attack success rate from 25% → 28%. Better retrieval provides more attack surface, not more robustness.
+---
 
-## 🧪 Methodology
-
-### Attack: Semantic Document Poisoning
-We replace correct answers in retrieved documents with plausible distractors:
-- **Example 1:** "Born in **1959**" → "Born in **1961**" (same entity type: DATE)
-- **Example 2:** "Located in **Oldham County**" → "Located in **New York**" (same type: GPE)
-
-### RAG Pipeline
-1. **Retrieval:** ChromaDB with `all-MiniLM-L6-v2` embeddings
-2. **Generation:** Llama-3-8B-Instruct (4-bit quantized) with factoid extraction prompt
-3. **Dataset:** 200 HotpotQA multi-hop questions (148 successfully poisoned)
-
-### Experimental Conditions
-- **V1 (Baseline):** Retrieve top-2 docs, 4K char context
-- **V2 (Enhanced):** Retrieve top-3 docs, 6K char context
-- **A/B Test:** Each question tested under clean vs. poisoned conditions
-
-## 📁 Repository Structure
+## Repository Map
 
 ```
 nlp-rag-robustness/
-├── phase1/
-│   ├── Phase1_Baseline_Study.ipynb    # Main experiment notebook
-│   ├── data/processed/                # Pre-generated poisoned benchmarks
-│   │   └── benchmark_semantic.json
-│   └── results/                       # Experimental results (V1 & V2)
-│       ├── baseline_results_v1.json
-│       ├── baseline_results_v2.json
-│       └── evaluation_v1.json
-│
-├── src/                               # Core RAG implementation
-│   ├── config.py                      # Configuration & paths
-│   ├── data_loader.py                 # HotpotQA + poisoning logic
-│   ├── retrieval.py                   # ChromaDB wrapper
-│   ├── generator.py                   # Llama-3 wrapper
-│   ├── pipeline.py                    # RAG orchestration
-│   └── evaluation.py                  # Metrics (EM, F1, ASR)
-│
-└── requirements.txt
+|-- phase1/
+|   |-- Phase1_Baseline_Study.ipynb
+|   |-- data/
+|   |   `-- processed/
+|   |       `-- benchmark_semantic.json
+|   `-- results/
+|       |-- baseline_results_v1.json
+|       |-- baseline_results_v2.json
+|       |-- evaluation_v1.json
+|       `-- evaluation_v2.json
+|-- src/
+|   |-- config.py
+|   |-- data_loader.py
+|   |-- retrieval.py
+|   |-- generator.py
+|   |-- pipeline.py
+|   `-- evaluation.py
+|-- requirements.txt
+`-- README.md
 ```
 
-## 🚀 Quick Start
+---
 
-### Option 1: Google Colab (Recommended)
-1. Open [`phase1/Phase1_Baseline_Study.ipynb`](phase1/Phase1_Baseline_Study.ipynb)
-2. Click "Open in Colab" badge
-3. Add your HuggingFace token to Colab Secrets (`HF_TOKEN`)
-4. Run all cells (takes ~30 min on T4 GPU)
+## What Each File Does
 
-### Option 2: Local Setup
-**Requirements:** Python 3.10+, CUDA GPU (8GB+ VRAM), HuggingFace account with Llama-3 access
+### Orchestration
+- [phase1/Phase1_Baseline_Study.ipynb](phase1/Phase1_Baseline_Study.ipynb)  
+Notebook controller for setup, benchmark generation, experiment execution, plotting, and report export.
+
+### Core Modules
+- [src/config.py](src/config.py)  
+All paths, model IDs, and experiment defaults.
+
+- [src/data_loader.py](src/data_loader.py)  
+Loads HotpotQA and creates semantic poisoned samples.
+
+- [src/retrieval.py](src/retrieval.py)  
+ChromaDB wrapper for document indexing and question-based retrieval.
+
+- [src/generator.py](src/generator.py)  
+Llama-3 loading (4-bit) and answer generation with consistency-aware prompt rules.
+
+- [src/pipeline.py](src/pipeline.py)  
+End-to-end run logic for clean/poisoned conditions, retrieval mode, and optional verification mode.
+
+- [src/evaluation.py](src/evaluation.py)  
+Metric computation and reporting (EM, F1, ASR, refusal, plus verification metrics when enabled).
+
+---
+
+## How To Orchestrate (Recommended)
+
+Use [phase1/Phase1_Baseline_Study.ipynb](phase1/Phase1_Baseline_Study.ipynb) as the single entry point.
+
+Notebook flow:
+1. Setup Colab environment and install dependencies.
+2. Load HotpotQA and inject semantic poison.
+3. Filter to successfully poisoned samples and save benchmark.
+4. Run V1 and V2 with retrieval mode enabled.
+5. Evaluate and export tables/charts/reports.
+
+Why this structure:
+- Easy to reproduce in one run.
+- Clear separation between orchestration (notebook) and logic (src modules).
+- Consistent with Colab-only GPU availability.
+
+---
+
+## Quick Start
+
+### Option A: Google Colab (recommended)
+1. Open [phase1/Phase1_Baseline_Study.ipynb](phase1/Phase1_Baseline_Study.ipynb).
+2. Add HF_TOKEN to Colab secrets.
+3. Run all cells in order.
+
+### Option B: Local run (GPU required)
 
 ```bash
 git clone https://github.com/kosetalha/nlp-rag-robustness.git
 cd nlp-rag-robustness
 
-# Setup environment
 python -m venv venv
 source venv/bin/activate  # Windows: .\venv\Scripts\activate
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 
-# Configure HuggingFace token
-cp .env.example .env
-# Edit .env and add: HF_TOKEN=your_token_here
-
-# Run notebook
+# set HF_TOKEN in your environment or .env
 jupyter notebook phase1/Phase1_Baseline_Study.ipynb
 ```
 
-## 📊 Evaluation Metrics
+---
 
-- **Exact Match (EM):** Strict answer correctness (normalized)
-- **F1 Score:** Token-level overlap between prediction and ground truth
-- **Attack Success Rate (ASR):** Model outputs planted distractor (not true answer)
-- **Refusal Rate:** Model responds "UNANSWERABLE"
+## Experiment Modes in Pipeline
 
-## 🔮 Phase 2: Defense Mechanisms
+In [src/pipeline.py](src/pipeline.py), run_experiment supports:
 
-Planned thesis extension implementing **Dialectical Verification**:
-- Multi-agent debate system (Generator + Auditor agents)
-- Cross-document consistency checking
-- Confidence calibration before final output
+- condition: clean or poisoned
+- use_retrieval: enables question-driven Chroma retrieval
+- enable_verification: enables deterministic multi-source conflict handling
 
-## 🛡️ Consistency-Aware Mode (Implemented)
-
-The pipeline now supports an explicit multi-source verification mode that is optional and backward-compatible.
-
-### What It Adds
-- **Self-consistency (deterministic):** per-source answers are aggregated into support/conflict statistics.
-- **Multi-source verification:** if sources conflict, final answer is forced to `UNANSWERABLE`.
-- **Consistency-aware prompting:** single prompt instructs the model to corroborate across sources and refuse on conflict/insufficient evidence.
-
-### How To Run
+Minimal example:
 
 ```python
 from src.pipeline import RAGPipeline
@@ -124,27 +144,47 @@ from src.pipeline import RAGPipeline
 pipe = RAGPipeline(top_k=3, max_context_chars=6000)
 pipe.load_benchmark("benchmark_semantic.json")
 
-# Baseline-compatible run (old behavior)
-clean = pipe.run_experiment(condition="clean", use_retrieval=False, enable_verification=False)
+clean = pipe.run_experiment(
+	condition="clean",
+	use_retrieval=True,
+	enable_verification=False,
+)
 
-# Consistency-aware run (new behavior)
 poisoned_verified = pipe.run_experiment(
 	condition="poisoned",
-	use_retrieval=False,
+	use_retrieval=True,
 	enable_verification=True,
 )
 
 pipe.save_results("baseline_results_with_verification.json")
 ```
 
-### New Result Fields
-Each sample includes:
-- `raw_generated_answer`: model answer before verification policy
-- `generated_answer`: final answer after verification policy
-- `verification`: source count, support/conflict counts, conflict flag, confidence status, override flag
+---
 
-`Evaluator` reports additional metrics when verification is enabled:
-- conflict rate
-- verification override rate
-- supported / weakly-supported / conflicted rates
+## Metrics
+
+Computed in [src/evaluation.py](src/evaluation.py):
+
+- Exact Match
+- F1 Score
+- Contains Answer
+- Refusal Rate
+- Attack Success Rate (poisoned condition)
+
+When verification is enabled, additional metrics include conflict and override rates.
+
+---
+
+## Notes for Reproducibility
+
+1. Keep RANDOM_SEED fixed.
+2. Keep benchmark file under phase1/data/processed.
+3. Run notebook cells in order.
+4. Save all outputs under phase1/results.
+
+---
+
+## Next Step
+
+Phase 2 extends this baseline with stronger verification and reliability mechanisms for thesis work.
 
