@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "nlp-rag-robustness",
+			"path": "."
+		},
+		{
+			"name": "data",
+			"path": "../../Desktop/data"
+		},
+		{
+			"name": "results",
+			"path": "../../Desktop/results"
+		}
+	],
+	"settings": {}
+}

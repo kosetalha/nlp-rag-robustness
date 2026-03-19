@@ -1,6 +1,6 @@
 """
 Data loading and poisoning module for HotpotQA benchmark.
-Supports both syntactic (obvious) and semantic (realistic) poisoning strategies.
+Uses semantic poisoning with type-consistent distractors.
 """
 import json
 import random
@@ -8,15 +8,14 @@ import re
 import spacy
 from datasets import load_dataset
 from typing import List, Dict, Optional
-from src.config import RAW_DATA_DIR, PROCESSED_DATA_DIR, RANDOM_SEED
+from src.config import PROCESSED_DATA_DIR, RANDOM_SEED
 
 
 class HotpotQALoader:
     """
     Loads HotpotQA dataset and creates poisoned benchmarks.
     
-    Poisoning Strategies:
-    - Syntactic: Replaces answers with obvious "[Fake Entity: Not X]" markers
+    Poisoning Strategy:
     - Semantic: Replaces answers with realistic but wrong entities using NER
     """
     
@@ -65,28 +64,33 @@ class HotpotQALoader:
         
         dataset = load_dataset("hotpot_qa", "distractor", split=self.split)
         
-        # Shuffle and select subset
+        # Fixed-seed shuffle guarantees reproducible sampling across runs.
         random.seed(RANDOM_SEED)
         self.dataset = dataset.shuffle(seed=RANDOM_SEED).select(range(self.sample_size))
         
         print(f"✅ Loaded {len(self.dataset)} samples")
-    
-    def _generate_syntactic_distractor(self, answer: str) -> str:
-        """
-        Syntactic poisoning: Creates obvious fake markers.
-        Easy for models to detect if they're robust.
-        """
-        return f"[Fake Entity: Not {answer}]"
     
     def _generate_semantic_distractor(self, answer: str) -> str:
         """
         Semantic poisoning: Creates realistic-looking but wrong entities.
         Harder for models to detect - tests true robustness.
         """
+        # If spaCy is unavailable, use neutral fallbacks and simple heuristics.
         if not self.nlp:
-            return self._generate_syntactic_distractor(answer)
+            clean_answer = answer.replace(",", "")
+            if clean_answer.isdigit():
+                offset = random.choice([-500, -200, -100, 100, 200, 500])
+                new_val = max(1, int(clean_answer) + offset)
+                return f"{new_val:,}" if "," in answer else str(new_val)
+            return random.choice([
+                "John Smith",
+                "New York",
+                "Global Industries",
+                "1999",
+                "42",
+            ])
         
-        # Handle numeric answers (including with commas)
+        # Numeric perturbation keeps attack plausible while preserving answer format.
         clean_answer = answer.replace(",", "")
         if clean_answer.isdigit():
             offset = random.choice([-500, -200, -100, 100, 200, 500])
@@ -96,19 +100,19 @@ class HotpotQALoader:
                 return f"{new_val:,}"
             return str(new_val)
         
-        # Use NER to detect entity type
+        # NER-based type detection helps create type-consistent distractors.
         doc = self.nlp(answer)
         label = "UNKNOWN"
         if doc.ents:
             label = doc.ents[0].label_
         
-        # Swap with appropriate distractor
+        # Prefer curated distractor pools for common entity classes.
         if label in self.distractors:
             options = [d for d in self.distractors[label] if d.lower() != answer.lower()]
             if options:
                 return random.choice(options)
         
-        # Smarter fallback based on answer characteristics
+        # Heuristic fallback prevents dropping samples when NER coverage is weak.
         answer_lower = answer.lower()
         
         # Short answers (likely acronyms, band names, etc.)
@@ -134,6 +138,8 @@ class HotpotQALoader:
     
     def _flatten_context(self, row: Dict) -> str:
         """Converts HotpotQA nested context to flat text."""
+        # "Title:" prefixes are intentionally preserved because downstream
+        # verification splits sources using this marker.
         context_parts = []
         for title, sentences in zip(row['context']['title'], row['context']['sentences']):
             context_parts.append(f"Title: {title}")
@@ -141,15 +147,17 @@ class HotpotQALoader:
             context_parts.append("")  # Empty line between documents
         return "\n".join(context_parts)
     
-    def inject_poison(self, strategy: str = "syntactic") -> None:
+    def inject_poison(self, strategy: str = "semantic") -> None:
         """
         Creates the poisoned benchmark.
         
         Args:
-            strategy: 'syntactic' or 'semantic'
+            strategy: Must be 'semantic'
         """
         if self.dataset is None:
             raise ValueError("Call load_data() first!")
+        if strategy != "semantic":
+            raise ValueError("Only semantic poisoning is supported in this project version.")
         
         print(f"🧪 Injecting poison... Strategy: {strategy.upper()}")
         
@@ -162,17 +170,14 @@ class HotpotQALoader:
             # Get original context
             original_context = self._flatten_context(row)
             
-            # Generate distractor based on strategy
-            if strategy == "semantic":
-                distractor = self._generate_semantic_distractor(answer)
-            else:
-                distractor = self._generate_syntactic_distractor(answer)
+            # Generate semantic distractor only.
+            distractor = self._generate_semantic_distractor(answer)
             
-            # Replace answer with distractor (case-insensitive)
+            # Case-insensitive replacement handles capitalization variations.
             pattern = re.compile(re.escape(answer), re.IGNORECASE)
             poisoned_context = pattern.sub(distractor, original_context)
             
-            # Check if replacement actually happened
+            # This flag is critical for filtering valid poisoned samples.
             is_poisoned = distractor in poisoned_context
             
             entry = {
@@ -189,7 +194,7 @@ class HotpotQALoader:
         
         self.processed_data = processed_samples
         
-        # Report statistics
+        # Report helps justify usable sample count in the final analysis.
         success_count = sum(1 for x in self.processed_data if x['is_poisoned_successfully'])
         print(f"✅ Processed {len(self.processed_data)} samples")
         print(f"📊 Successful poisonings: {success_count}/{len(self.processed_data)} ({100*success_count/len(self.processed_data):.1f}%)")

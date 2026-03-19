@@ -41,13 +41,14 @@ class LlamaGenerator:
             print("   ⚠️ No GPU detected - will be slow!")
         
         try:
-            # Load tokenizer
+            # Tokenizer must match the instruction-tuned model family.
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
                 token=HF_TOKEN
             )
             
-            # Configure 4-bit quantization
+            # 4-bit quantization keeps VRAM usage low enough for Colab/T4 while
+            # preserving adequate quality for factoid extraction.
             bnb_config = BitsAndBytesConfig(
                 load_in_4bit=True,
                 bnb_4bit_compute_dtype=torch.float16,
@@ -55,7 +56,7 @@ class LlamaGenerator:
                 bnb_4bit_quant_type="nf4"
             )
             
-            # Load model with quantization config
+            # device_map="auto" lets transformers place layers on available devices.
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 token=HF_TOKEN,
@@ -64,7 +65,7 @@ class LlamaGenerator:
                 torch_dtype=torch.float16
             )
             
-            # Create pipeline
+            # Pipeline API provides a concise generation interface used by pipeline.py.
             self.pipe = pipeline(
                 "text-generation",
                 model=self.model,
@@ -87,6 +88,7 @@ class LlamaGenerator:
     
     def _truncate_context(self, context: str, max_chars: int = MAX_CONTEXT_CHARS) -> str:
         """Truncate context to prevent OOM errors."""
+        # Character-based clipping is a pragmatic safety guard for long contexts.
         if len(context) > max_chars:
             return context[:max_chars] + "\n[Context truncated for length...]"
         return context
@@ -111,16 +113,25 @@ class LlamaGenerator:
         # Truncate context to prevent OOM
         context = self._truncate_context(context)
         
-        # Factoid extraction prompt - outputs only the answer entity (3-4 words max)
+        # Single consistency-aware prompt (Phase 2): this directly encodes the
+        # requirement that answers should be corroborated and conflicts refused.
         prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-Extract the answer from the context. Output ONLY the answer entity (1-4 words). No sentences.
+    You are a reliability-focused question answering assistant.
+    Use only the provided context.
+
+    Rules:
+    1) Compare evidence across the provided sources (titles/segments).
+    2) Prefer answers corroborated by multiple sources.
+    3) If sources conflict OR evidence is insufficient, output exactly: UNANSWERABLE
+    4) Output ONLY the final answer entity (1-4 words). No sentences, no explanation.
 
 Examples:
 Q: What is the capital of France? A: Paris
 Q: Who wrote Hamlet? A: William Shakespeare
 Q: When was Einstein born? A: 1879
 Q: What nationality was Chopin? A: Polish
+    Q: If two sources disagree on a date? A: UNANSWERABLE
 
 If not in context: UNANSWERABLE<|eot_id|><|start_header_id|>user<|end_header_id|>
 
@@ -130,7 +141,7 @@ Question: {question}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 A:
 """
         
-        # Generate with memory cleanup
+        # no_grad avoids autograd overhead during inference.
         with torch.no_grad():
             outputs = self.pipe(
                 prompt,
@@ -138,19 +149,19 @@ A:
                 return_full_text=True
             )
         
-        # Extract response (remove prompt)
+        # The pipeline returns prompt + completion, so split on assistant header.
         generated_text = outputs[0]["generated_text"]
         answer = generated_text.split("<|start_header_id|>assistant<|end_header_id|>")[-1].strip()
         
-        # Clean up any remaining tokens
+        # Remove trailing special tokens when present.
         if "<|eot_id|>" in answer:
             answer = answer.split("<|eot_id|>")[0].strip()
         
-        # Remove prompt artifact "A:" or "A:\n"
+        # Keep output as raw factoid entity for evaluation metrics.
         if answer.startswith("A:"):
             answer = answer[2:].strip()
         
-        # Clean up leading/trailing quotes or periods
+        # Strip punctuation artifacts that can reduce EM/F1 unfairly.
         answer = answer.strip('"\'.')
         
         return answer

@@ -9,7 +9,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 from src.config import CHROMA_DB_DIR, EMBEDDING_MODEL
 
-# Detect Colab environment
+# Detect Colab environment to avoid filesystem persistence issues in notebooks.
 IN_COLAB = 'google.colab' in sys.modules
 
 
@@ -29,17 +29,17 @@ class RAGRetriever:
         """
         self.collection_name = collection_name
         
-        # Use sentence-transformers for embeddings
+        # Use sentence-transformers embeddings for semantic nearest-neighbor search.
         self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=EMBEDDING_MODEL
         )
         
         if IN_COLAB:
-            # Use in-memory client on Colab (avoids read-only filesystem issues)
+            # Colab often has ephemeral sessions, so in-memory mode is the safest default.
             self.client = chromadb.EphemeralClient()
             print("🗑️ Using in-memory ChromaDB (Colab mode)")
         else:
-            # Use persistent storage locally
+            # Local mode persists DB to disk so repeated runs can reuse storage if desired.
             if reset_db and CHROMA_DB_DIR.exists():
                 try:
                     shutil.rmtree(CHROMA_DB_DIR)
@@ -50,7 +50,7 @@ class RAGRetriever:
             CHROMA_DB_DIR.mkdir(parents=True, exist_ok=True)
             self.client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
         
-        # Get or create collection
+        # Collection is the logical index where all embedded documents are stored.
         self.collection = self.client.get_or_create_collection(
             name=collection_name,
             embedding_function=self.embedding_fn
@@ -74,14 +74,14 @@ class RAGRetriever:
         """
         print(f"📚 Indexing {len(documents)} documents...")
         
-        # ChromaDB requires non-empty metadata dicts
+        # ChromaDB validates metadata; empty dicts can fail in some versions.
         if metadatas is None:
             metadatas = [{"indexed": "true"} for _ in documents]
         else:
             # Ensure no empty dicts (ChromaDB validation fails on empty)
             metadatas = [m if m else {"indexed": "true"} for m in metadatas]
         
-        # Batch processing for stability
+        # Batch writes reduce memory spikes and are more stable on Colab GPU notebooks.
         batch_size = 50
         for i in range(0, len(documents), batch_size):
             end = min(i + batch_size, len(documents))
@@ -104,6 +104,7 @@ class RAGRetriever:
         Returns:
             List of document texts
         """
+        # Query returns nearest documents by embedding similarity (semantic match).
         results = self.collection.query(
             query_texts=[query],
             n_results=top_k
@@ -124,6 +125,7 @@ class RAGRetriever:
         Returns:
             Dictionary with documents, metadatas, and distances
         """
+        # Metadata and distances are useful for debugging retrieval quality.
         results = self.collection.query(
             query_texts=[query],
             n_results=top_k,

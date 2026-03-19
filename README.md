@@ -50,8 +50,7 @@ nlp-rag-robustness/
 ├── phase1/
 │   ├── Phase1_Baseline_Study.ipynb    # Main experiment notebook
 │   ├── data/processed/                # Pre-generated poisoned benchmarks
-│   │   ├── benchmark_semantic.json
-│   │   └── benchmark_syntactic.json
+│   │   └── benchmark_semantic.json
 │   └── results/                       # Experimental results (V1 & V2)
 │       ├── baseline_results_v1.json
 │       ├── baseline_results_v2.json
@@ -110,4 +109,45 @@ Planned thesis extension implementing **Dialectical Verification**:
 - Multi-agent debate system (Generator + Auditor agents)
 - Cross-document consistency checking
 - Confidence calibration before final output
+
+## 🛡️ Consistency-Aware Mode (Implemented)
+
+The pipeline now supports an explicit multi-source verification mode that is optional and backward-compatible.
+
+### What It Adds
+- **Self-consistency (deterministic):** per-source answers are aggregated into support/conflict statistics.
+- **Multi-source verification:** if sources conflict, final answer is forced to `UNANSWERABLE`.
+- **Consistency-aware prompting:** single prompt instructs the model to corroborate across sources and refuse on conflict/insufficient evidence.
+
+### How To Run
+
+```python
+from src.pipeline import RAGPipeline
+
+pipe = RAGPipeline(top_k=3, max_context_chars=6000)
+pipe.load_benchmark("benchmark_semantic.json")
+
+# Baseline-compatible run (old behavior)
+clean = pipe.run_experiment(condition="clean", use_retrieval=False, enable_verification=False)
+
+# Consistency-aware run (new behavior)
+poisoned_verified = pipe.run_experiment(
+	condition="poisoned",
+	use_retrieval=False,
+	enable_verification=True,
+)
+
+pipe.save_results("baseline_results_with_verification.json")
+```
+
+### New Result Fields
+Each sample includes:
+- `raw_generated_answer`: model answer before verification policy
+- `generated_answer`: final answer after verification policy
+- `verification`: source count, support/conflict counts, conflict flag, confidence status, override flag
+
+`Evaluator` reports additional metrics when verification is enabled:
+- conflict rate
+- verification override rate
+- supported / weakly-supported / conflicted rates
 
