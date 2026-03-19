@@ -37,3 +37,5 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+nlp-rag-robustness.code-workspace

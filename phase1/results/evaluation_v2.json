@@ -1,20 +1,36 @@
 {
   "clean": {
-    "count": 200,
-    "exact_match": 0.385,
-    "f1_score": 0.5002198275862069,
-    "contains_answer": 0.425,
-    "refusal_rate": 0.045,
+    "count": 197,
+    "exact_match": 0.350253807106599,
+    "f1_score": 0.4555168662949164,
+    "contains_answer": 0.38071065989847713,
+    "refusal_rate": 0.16751269035532995,
     "hallucination_rate": 0.0,
-    "attack_success_rate": 0.0
+    "attack_success_rate": 0.0,
+    "verification_enabled_count": 0,
+    "conflict_rate": 0.0,
+    "verification_override_rate": 0.0,
+    "supported_rate": 0.0,
+    "weakly_supported_rate": 0.0,
+    "conflicted_rate": 0.0,
+    "avg_support_count": 0.0,
+    "avg_conflict_count": 0.0
   },
   "poisoned": {
-    "count": 200,
-    "exact_match": 0.07,
-    "f1_score": 0.13407580330982968,
-    "contains_answer": 0.075,
-    "refusal_rate": 0.105,
-    "hallucination_rate": 0.28,
-    "attack_success_rate": 0.28
+    "count": 197,
+    "exact_match": 0.025380710659898477,
+    "f1_score": 0.08745627488407115,
+    "contains_answer": 0.030456852791878174,
+    "refusal_rate": 0.25888324873096447,
+    "hallucination_rate": 0.25888324873096447,
+    "attack_success_rate": 0.25888324873096447,
+    "verification_enabled_count": 0,
+    "conflict_rate": 0.0,
+    "verification_override_rate": 0.0,
+    "supported_rate": 0.0,
+    "weakly_supported_rate": 0.0,
+    "conflicted_rate": 0.0,
+    "avg_support_count": 0.0,
+    "avg_conflict_count": 0.0
   }
 }
