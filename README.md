@@ -18,7 +18,10 @@ Core idea:
 4. Compare quality and attack metrics.
 
 Main finding:
-Increasing retrieval depth and context size did not improve robustness in this setup.
+Increasing context budget (V1 -> V2) improved clean accuracy but increased poisoning success in this direct-context setup.
+
+Method note:
+For the reported baseline runs, use_retrieval=False. In this mode, max_context_chars is the active context-budget control, while top_k remains a configured pipeline parameter for retrieval-mode compatibility.
 
 ---
 
@@ -26,9 +29,13 @@ Increasing retrieval depth and context size did not improve robustness in this s
 
 | Metric | V1 Clean | V1 Poisoned | V2 Clean | V2 Poisoned |
 |--------|----------|-------------|----------|-------------|
-| Exact Match | 34.5% | 7.5% | 38.5% | 7.0% |
-| Attack Success Rate | 0% | 25.0% | 0% | 28.0% |
-| Relative EM Drop | - | -78% | - | -82% |
+| Exact Match | 28.9% | 4.1% | 36.0% | 2.5% |
+| F1 Score | 38.4% | 10.2% | 46.9% | 8.7% |
+| Refusal Rate | 25.4% | 33.0% | 16.8% | 25.4% |
+| Attack Success Rate | 0% | 18.8% | 0% | 26.9% |
+| Relative EM Drop | - | -86.0% | - | -93.0% |
+
+Note: small run-to-run metric variation is expected because LLM generation is not fully deterministic.
 
 ---
 
@@ -94,7 +101,7 @@ Notebook flow:
 1. Setup Colab environment and install dependencies.
 2. Load HotpotQA and inject semantic poison.
 3. Filter to successfully poisoned samples and save benchmark.
-4. Run V1 and V2 with retrieval mode enabled.
+4. Run V1 and V2 in direct-context mode (use_retrieval=False) for controlled poisoning causality.
 5. Evaluate and export tables/charts/reports.
 
 Why this structure:
@@ -146,13 +153,13 @@ pipe.load_benchmark("benchmark_semantic.json")
 
 clean = pipe.run_experiment(
 	condition="clean",
-	use_retrieval=True,
+	use_retrieval=False,
 	enable_verification=False,
 )
 
 poisoned_verified = pipe.run_experiment(
 	condition="poisoned",
-	use_retrieval=True,
+	use_retrieval=False,
 	enable_verification=True,
 )
 
